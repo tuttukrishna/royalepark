@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Royale Park | Premium 3D Experience</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        serif: ['"Playfair Display"', 'serif'],
+                    },
+                    colors: {
+                        obsidian: '#050505',
+                        charcoal: '#111111',
+                        gold: '#D4AF37',
+                        goldLight: '#F3E5AB',
+                        goldDark: '#997A00',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            outline: none;
+            pointer-events: none;
+        }
+
+        /* ----------------------------------
+           ULTRA-PREMIUM GLASSMORPHISM
+        ----------------------------------- */
+        .glass-nav {
+            backdrop-filter: blur(30px) saturate(210%);
+            -webkit-backdrop-filter: blur(30px) saturate(210%);
+            box-shadow:
+                0 4px 30px rgba(0, 0, 0, 0.03),
+                inset 0 1px 1px rgba(255, 255, 255, 0.3),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* Premium Center-Expanding Navigation Underlines */
+        .nav-link-premium {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link-premium::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #997A00, #D4AF37, #F3E5AB);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        .nav-link-premium:hover::after,
+        .nav-link-premium.active::after {
+            width: 100%;
+        }
+
+        .tilt-wrapper {
+            perspective: 1500px;
+            transform-style: preserve-3d;
+        }
+
+        .glass-card {
+            position: relative;
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            transform-style: preserve-3d;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, background 0.4s ease, border 0.4s ease;
+            overflow: hidden;
+        }
+
+        .glare {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.15), transparent 60%);
+            mix-blend-mode: screen;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            transform: translateZ(1px);
+        }
+
+        .text-gold-foil {
+            background: linear-gradient(to right, #997A00, #F3E5AB, #D4AF37, #FFF8D6, #8A6D00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: shine 5s linear infinite;
+        }
+
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        /* STABLE JITTER-FREE INTERACTION SHIFTS */
+        .gold-btn-3d {
+            background: linear-gradient(145deg, #D4AF37, #997A00);
+            color: #050505;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: transform, box-shadow, filter;
+            transform: translateZ(0);
+        }
+
+        .gold-btn-3d:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 12px 24px rgba(212, 175, 55, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .reveal-3d {
+            opacity: 0;
+            transform: translateY(40px) rotateX(4deg);
+            transition: all 1.2s cubic-bezier(0.215, 0.610, 0.355, 1);
+        }
+
+        .reveal-3d.visible {
+            opacity: 1;
+            transform: translateY(0) rotateX(0);
+        }
+
+        .lightbox-active {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        /* --- STAGGERED INITIAL LOAD ANIMATIONS --- */
+        #preloader {
+            position: fixed;
+            inset: 0;
+            background: #050505;
+            z-index: 9999;
+            transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1), border-radius 1.2s ease;
+            transform-origin: top center;
+        }
+
+        #preloader.slide-up {
+            transform: translateY(-100%);
+            border-bottom-left-radius: 30%;
+            border-bottom-right-radius: 30%;
+        }
+
+        .load-hidden {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1.2s cubic-bezier(0.215, 0.610, 0.355, 1);
+            will-change: opacity, transform;
+        }
+
+        .load-hidden.load-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body
+    class="antialiased selection:bg-gold selection:text-obsidian bg-gray-50 text-gray-900 dark:bg-obsidian dark:text-[#E5E5E5]">
+
+    <div id="preloader"></div>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <div class="fixed w-full top-5 left-0 z-50 px-4 md:px-8 pointer-events-none load-hidden">
+        <nav
+            class="max-w-[85rem] mx-auto px-6 md:px-10 py-3 flex justify-between items-center glass-nav bg-white/30 dark:bg-black/40 border border-white/40 dark:border-white/10 rounded-full pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
+            <a href="#" class="flex items-center transition-transform duration-300 hover:scale-105">
+                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780470744/royal_park_logo_fxrcea.png"
+                    alt="Royale Park Logo" class="h-10 md:h-12 w-auto drop-shadow-md">
+            </a>
+
+            <div
+                class="hidden lg:flex space-x-10 text-[10px] font-black text-gray-900 dark:text-gray-100 tracking-[0.25em] uppercase items-center font-sans">
+                <a href="#" class="text-gold nav-link-premium active">Home</a>
+                <a href="#about" class="hover:text-gold nav-link-premium">About Us</a>
+                <a href="#rooms" class="hover:text-gold nav-link-premium">Our Rooms</a>
+                <a href="#facilities" class="hover:text-gold nav-link-premium">Facilities</a>
+                <a href="#contact" class="hover:text-gold nav-link-premium">Contact</a>
+
+                <button id="theme-toggle"
+                    class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-white/10 transition-all duration-300">
+                    <svg id="icon-sun" class="w-4 h-4 hidden dark:block text-gold" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <svg id="icon-moon" class="w-4 h-4 block dark:hidden text-gray-800" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <a href="#rooms"
+                class="book-btn gold-btn-3d px-7 py-2.5 rounded-full text-[10px] font-black tracking-[0.15em] uppercase hidden md:block">
+                Book Now
+            </a>
+        </nav>
+    </div>
+
+    <main class="relative z-10 w-full">
+        <!-- Hero Section -->
+        <section
+            class="min-h-[90vh] pt-44 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center">
+            <div
+                class="inline-flex items-center gap-3 mb-10 px-6 py-2 rounded-full border border-gold/30 bg-white/50 dark:bg-gold/5 text-xs font-bold text-gray-800 dark:text-goldLight tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(212,175,55,0.1)] backdrop-blur-md load-hidden">
+                <span class="w-2 h-2 rounded-full bg-gold animate-pulse shadow-[0_0_10px_#D4AF37]"></span>
+                Alleppey, Kerala
+            </div>
+            <h1
+                class="text-5xl md:text-7xl lg:text-[7rem] font-serif italic tracking-tight mb-8 text-gray-900 dark:text-white leading-[1.1] drop-shadow-2xl load-hidden">
+                Experience Luxury <br /><span
+                    class="text-gold-foil font-sans not-italic font-extrabold tracking-tighter">At Royale Park</span>
+            </h1>
+            <p
+                class="max-w-2xl text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-16 font-light leading-relaxed load-hidden">
+                The iconic name in the hospitality industry of Alleppey. Providing untold memories to the footloose
+                traveler for the past 15 years in the Venice of the East.
+            </p>
+
+            <div class="tilt-wrapper w-full max-w-5xl load-hidden mb-10">
+                <div
+                    class="glass-card tilt-card w-full p-4 rounded-[2rem] flex flex-col md:flex-row gap-4 justify-between items-center z-10 relative bg-white/40 dark:bg-gradient-to-br dark:from-[rgba(30,30,30,0.6)] dark:to-[rgba(15,15,15,0.8)] border border-white/20 dark:border-white/5 dark:border-t-gold/20 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
+                    <div class="glare rounded-[2rem]"></div>
+
+                    <div
+                        class="flex-1 w-full px-8 py-5 rounded-xl bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 transition-colors cursor-pointer group">
+                        <div class="text-left">
+                            <div
+                                class="text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest group-hover:text-gold transition">
+                                Check-in Date</div>
+                            <div class="text-lg font-medium text-gray-900 dark:text-white">Select Date</div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex-1 w-full px-8 py-5 rounded-xl bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 transition-colors cursor-pointer group">
+                        <div class="text-left">
+                            <div
+                                class="text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest group-hover:text-gold transition">
+                                Duration</div>
+                            <div class="text-lg font-medium text-gray-900 dark:text-white">1 Night</div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex-1 w-full px-8 py-5 rounded-xl bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 transition-colors cursor-pointer group">
+                        <div class="text-left">
+                            <div
+                                class="text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest group-hover:text-gold transition">
+                                Guests</div>
+                            <div class="text-lg font-medium text-gray-900 dark:text-white">2 Adults</div>
+                        </div>
+                    </div>
+
+                    <button
+                        class="book-btn w-full md:w-auto px-12 py-7 rounded-xl gold-btn-3d font-extrabold text-obsidian tracking-wider text-sm uppercase relative z-20">
+                        Check Availability
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW Amenities Featured Bar Section -->
+        <section id="amenities-bar" class="py-12 px-6 reveal-3d relative z-20 mt-8 mb-16">
+            <div class="max-w-[90rem] mx-auto">
+                <div class="flex flex-col md:flex-row gap-6 items-stretch justify-center">
+
+                    <!-- Amenity 1: Conference Hall -->
+                    <div class="flex-1 tilt-wrapper group cursor-pointer" onclick="openAmenityModal('conference')">
+                        <div
+                            class="glass-card tilt-card rounded-[1.5rem] overflow-hidden h-full flex flex-col bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 hover:border-gold/50 transition-all duration-500 shadow-lg relative">
+                            <div class="glare rounded-[1.5rem]"></div>
+                            <div class="h-48 relative overflow-hidden">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781740_ezxsve.jpg"
+                                    alt="Conference Hall"
+                                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent">
+                                </div>
+                                <div class="absolute bottom-4 left-6 z-10">
+                                    <div class="text-[9px] font-bold uppercase tracking-[0.2em] text-gold mb-1">
+                                        Corporate</div>
+                                    <h3 class="text-xl font-bold text-white drop-shadow-md">Conference Hall</h3>
+                                </div>
+                            </div>
+                            <div class="p-5 flex-grow flex flex-col justify-between relative z-20 dark:bg-black/10">
+                                <p class="text-xs text-gray-600 dark:text-gray-300 font-light mb-4 line-clamp-2">
+                                    State-of-the-art facilities for your corporate meetings, seminars, and events.</p>
+                                <button
+                                    class="self-start py-2.5 px-5 rounded-lg border border-gold/50 text-gold hover:bg-gold hover:text-black transition-colors duration-300 font-bold uppercase tracking-widest text-[9px]">View
+                                    Details</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amenity 2: Restaurant -->
+                    <div class="flex-1 tilt-wrapper group cursor-pointer" onclick="openAmenityModal('restaurant')">
+                        <div
+                            class="glass-card tilt-card rounded-[1.5rem] overflow-hidden h-full flex flex-col bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 hover:border-gold/50 transition-all duration-500 shadow-lg relative">
+                            <div class="glare rounded-[1.5rem]"></div>
+                            <div class="h-48 relative overflow-hidden">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781727_xij4cn.jpg"
+                                    alt="Restaurant"
+                                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent">
+                                </div>
+                                <div class="absolute bottom-4 left-6 z-10">
+                                    <div class="text-[9px] font-bold uppercase tracking-[0.2em] text-gold mb-1">Dining
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white drop-shadow-md">Multi Cuisine</h3>
+                                </div>
+                            </div>
+                            <div class="p-5 flex-grow flex flex-col justify-between relative z-20 dark:bg-black/10">
+                                <p class="text-xs text-gray-600 dark:text-gray-300 font-light mb-4 line-clamp-2">Savor
+                                    exceptional culinary delights ranging from local Kerala flavors to global cuisines.
+                                </p>
+                                <button
+                                    class="self-start py-2.5 px-5 rounded-lg border border-gold/50 text-gold hover:bg-gold hover:text-black transition-colors duration-300 font-bold uppercase tracking-widest text-[9px]">View
+                                    Details</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amenity 3: Rooms -->
+                    <div class="flex-1 tilt-wrapper group cursor-pointer" onclick="openAmenityModal('rooms')">
+                        <div
+                            class="glass-card tilt-card rounded-[1.5rem] overflow-hidden h-full flex flex-col bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 hover:border-gold/50 transition-all duration-500 shadow-lg relative">
+                            <div class="glare rounded-[1.5rem]"></div>
+                            <div class="h-48 relative overflow-hidden">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450702077_j4kr1p.jpg"
+                                    alt="Rooms"
+                                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent">
+                                </div>
+                                <div class="absolute bottom-4 left-6 z-10">
+                                    <div class="text-[9px] font-bold uppercase tracking-[0.2em] text-gold mb-1">
+                                        Accommodation</div>
+                                    <h3 class="text-xl font-bold text-white drop-shadow-md">Luxury Rooms</h3>
+                                </div>
+                            </div>
+                            <div class="p-5 flex-grow flex flex-col justify-between relative z-20 dark:bg-black/10">
+                                <p class="text-xs text-gray-600 dark:text-gray-300 font-light mb-4 line-clamp-2">
+                                    Experience unparalleled comfort in our meticulously designed rooms & suites.</p>
+                                <button
+                                    class="self-start py-2.5 px-5 rounded-lg border border-gold/50 text-gold hover:bg-gold hover:text-black transition-colors duration-300 font-bold uppercase tracking-widest text-[9px]">View
+                                    Details</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="py-32 px-6 relative reveal-3d border-t border-gray-200 dark:border-white/5">
+            <div class="max-w-[90rem] mx-auto grid grid-cols-1 xl:grid-cols-2 gap-20 items-center">
+                <div class="tilt-wrapper w-full order-2 xl:order-1">
+                    <div
+                        class="glass-card tilt-card h-[600px] w-full rounded-[2rem] p-3 bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-white/20 dark:border-white/5 relative">
+                        <div class="glare rounded-[2rem]"></div>
+
+                        <div
+                            class="w-full h-full rounded-xl overflow-hidden p-2 grid grid-cols-4 grid-rows-2 gap-2 bg-black/5 dark:bg-white/5">
+                            <div class="col-span-2 row-span-2 rounded-lg overflow-hidden relative cursor-pointer group/img"
+                                onclick="openLightbox(this)">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1463317238_p46ann.jpg"
+                                    alt="Royale Park Grid 1"
+                                    class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/img:scale-105">
+                                <div
+                                    class="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300">
+                                </div>
+                            </div>
+                            <div class="col-span-1 row-span-1 rounded-lg overflow-hidden relative cursor-pointer group/img"
+                                onclick="openLightbox(this)">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781727_xij4cn.jpg"
+                                    alt="Royale Park Grid 2"
+                                    class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/img:scale-105">
+                                <div
+                                    class="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300">
+                                </div>
+                            </div>
+                            <div class="col-span-1 row-span-1 rounded-lg overflow-hidden relative cursor-pointer group/img"
+                                onclick="openLightbox(this)">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781740_ezxsve.jpg"
+                                    alt="Royale Park Grid 3"
+                                    class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/img:scale-105">
+                                <div
+                                    class="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300">
+                                </div>
+                            </div>
+                            <div class="col-span-1 row-span-1 rounded-lg overflow-hidden relative cursor-pointer group/img"
+                                onclick="openLightbox(this)">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450702077_j4kr1p.jpg"
+                                    alt="Royale Park Grid 4"
+                                    class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/img:scale-105">
+                                <div
+                                    class="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300">
+                                </div>
+                            </div>
+                            <div class="col-span-1 row-span-1 rounded-lg overflow-hidden relative cursor-pointer group/img"
+                                onclick="openLightbox(this)">
+                                <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471146/1450695529_chp4rv.jpg"
+                                    alt="Royale Park Grid 5"
+                                    class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/img:scale-105">
+                                <div
+                                    class="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors duration-300">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pl-0 xl:pl-10 order-1 xl:order-2">
+                    <h2 class="text-4xl md:text-6xl font-bold mb-8 text-gray-900 dark:text-white leading-tight">
+                        A Souvenir to <br /><span
+                            class="text-gold-foil font-serif italic text-5xl md:text-7xl drop-shadow-lg">Carry
+                            Back</span>
+                    </h2>
+                    <p class="text-gray-600 dark:text-gray-400 text-lg font-light leading-relaxed mb-6">
+                        A magical land of palm fronds, placid backwaters, and the deep blue sea. Nestling in the central
+                        part of the town, easily approachable by road and rail, and just a stone's throw away from the
+                        bus stand and the boat jetty, the business hotel has the great advantage of smooth and
+                        hassle-free access.
+                    </p>
+                    <p class="text-gray-600 dark:text-gray-400 text-lg font-light leading-relaxed mb-12">
+                        The total experience of Royale Park, from the entry to the checkout, would be a souvenir for you
+                        to carry back. The USP of the establishment is the impeccable service provided by Team Royale
+                        Park. Above all, the total Royale Park experience is easy on the pocket.
+                    </p>
+
+                    <div
+                        class="grid grid-cols-2 gap-8 p-8 glass-card rounded-2xl border-l-4 border-l-gold bg-white/40 dark:bg-[rgba(30,30,30,0.6)]">
+                        <div>
+                            <div class="text-6xl font-serif text-gold mb-2 drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+                                15<span class="text-4xl">+</span></div>
+                            <div
+                                class="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-[0.2em]">
+                                Years of Excellence</div>
+                        </div>
+                        <div>
+                            <div class="text-6xl font-serif text-gold mb-2 drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+                                24<span class="text-4xl">/7</span></div>
+                            <div
+                                class="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-[0.2em]">
+                                Premium Service</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="rooms" class="py-32 px-6 reveal-3d border-t border-gray-200 dark:border-white/5">
+            <div class="max-w-[90rem] mx-auto">
+                <div class="text-center mb-24">
+                    <h2 class="text-5xl md:text-7xl font-bold mb-6 text-gray-900 dark:text-white">Our <span
+                            class="text-gold-foil font-serif italic drop-shadow-lg">Rooms</span></h2>
+                    <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-light text-lg">A blend of luxury
+                        and affordability. Every room has been designed keeping in mind the absolute comfort of the
+                        guest.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                    <!-- Royale Suite Card -->
+                    <div class="tilt-wrapper cursor-pointer group">
+                        <div
+                            class="glass-card tilt-card rounded-[2rem] p-10 relative h-full flex flex-col bg-gradient-to-b from-gold/10 to-transparent dark:from-[rgba(212,175,55,0.1)] border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 hover:-translate-y-2 transition-all duration-500 shadow-lg dark:shadow-[0_20px_50px_rgba(212,175,55,0.1)]">
+                            <div class="glare rounded-[2rem]"></div>
+                            <div
+                                class="text-[11px] font-bold uppercase tracking-[0.2em] text-gold mb-6 transition-colors duration-300">
+                                Ultimate Luxury</div>
+                            <h3
+                                class="text-3xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gold transition-colors duration-300">
+                                Royale Suite</h3>
+                            <div class="text-5xl font-serif text-gray-900 dark:text-white mb-10 flex items-start gap-2">
+                                <span class="text-sm font-sans font-bold text-gray-500 mt-2">INR</span> <span
+                                    class="text-gold">4000</span>
+                            </div>
+                            <ul class="space-y-5 text-gray-600 dark:text-gray-400 text-sm font-light mb-10 flex-grow">
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Complimentary Wi-Fi
+                                </li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> 24 Hour Room
+                                    Service</li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Safe Deposit Locker
+                                </li>
+                            </ul>
+                            <button
+                                class="book-btn w-full py-5 rounded-xl gold-btn-3d font-extrabold uppercase tracking-widest text-xs relative z-20"
+                                data-room="Royale Suite">Book Suite</button>
+                        </div>
+                    </div>
+
+                    <!-- Luxury Room Card -->
+                    <div class="tilt-wrapper cursor-pointer group">
+                        <div
+                            class="glass-card tilt-card rounded-[2rem] p-10 relative h-full flex flex-col bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 hover:-translate-y-2 transition-all duration-500">
+                            <div class="glare rounded-[2rem]"></div>
+                            <div
+                                class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-6 group-hover:text-gold transition-colors duration-300">
+                                Premium Comfort</div>
+                            <h3
+                                class="text-3xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gold transition-colors duration-300">
+                                Luxury Room</h3>
+                            <div class="text-5xl font-serif text-gray-900 dark:text-white mb-10 flex items-start gap-2">
+                                <span class="text-sm font-sans font-bold text-gray-500 mt-2">INR</span> <span
+                                    class="text-gold">3500</span>
+                            </div>
+                            <ul class="space-y-5 text-gray-600 dark:text-gray-400 text-sm font-light mb-10 flex-grow">
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Complimentary Wi-Fi
+                                </li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Multi Channel TV
+                                </li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Bottled Mineral
+                                    Water</li>
+                            </ul>
+                            <button
+                                class="book-btn w-full py-5 rounded-xl gold-btn-3d font-extrabold uppercase tracking-widest text-xs relative z-20"
+                                data-room="Luxury Room">Book Luxury</button>
+                        </div>
+                    </div>
+
+                    <!-- Premium Room Card -->
+                    <div class="tilt-wrapper cursor-pointer group">
+                        <div
+                            class="glass-card tilt-card rounded-[2rem] p-10 relative h-full flex flex-col bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 hover:border-gold/50 dark:hover:border-gold/30 hover:-translate-y-2 transition-all duration-500">
+                            <div class="glare rounded-[2rem]"></div>
+                            <div
+                                class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-6 group-hover:text-gold transition-colors duration-300">
+                                Business Standard</div>
+                            <h3
+                                class="text-3xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gold transition-colors duration-300">
+                                Premium Room</h3>
+                            <div class="text-5xl font-serif text-gray-900 dark:text-white mb-10 flex items-start gap-2">
+                                <span class="text-sm font-sans font-bold text-gray-500 mt-2">INR</span> <span
+                                    class="text-gold">3250</span>
+                            </div>
+                            <ul class="space-y-5 text-gray-600 dark:text-gray-400 text-sm font-light mb-10 flex-grow">
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Coffee Maker</li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Laundry Service
+                                </li>
+                                <li class="flex items-center gap-4"><span class="text-gold">✔</span> Premium In-room
+                                    Setup</li>
+                            </ul>
+                            <button
+                                class="book-btn w-full py-5 rounded-xl gold-btn-3d font-extrabold uppercase tracking-widest text-xs relative z-20"
+                                data-room="Premium Room">Book Premium</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="facilities"
+            class="py-32 px-6 reveal-3d border-t border-b border-gray-200 dark:border-white/5 bg-gray-100/50 dark:bg-white/[0.02]">
+            <div class="max-w-[90rem] mx-auto">
+                <h2 class="text-5xl md:text-7xl font-bold mb-20 text-center text-gray-900 dark:text-white">World-Class
+                    <span class="text-gold-foil font-serif italic">Facilities</span></h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div class="tilt-wrapper">
+                        <div
+                            class="glass-card tilt-card p-10 rounded-[2rem] h-full border-t-2 border-t-gold/50 bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 shadow-sm">
+                            <div class="glare rounded-[2rem]"></div>
+                            <h3
+                                class="text-2xl font-serif text-gold mb-8 border-b border-gray-300 dark:border-white/10 pb-4">
+                                Hotel Facilities</h3>
+                            <ul class="space-y-3.5 text-sm text-gray-700 dark:text-gray-300 font-light">
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Ample Car
+                                    Parking Space.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Business
+                                    Center.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Multi Cuisine
+                                    Restaurant (Veg & Non-veg).</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Beer and Wine
+                                    Parlor.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Conference
+                                    Hall.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Banquet Hall.
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Board Room.
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Outdoor
+                                    catering service.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> 6.30am to
+                                    10.30pm Room Service</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Laundry
+                                    Service</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Wheel chair
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Travel Desk.
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Books & Curio
+                                    Shop</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Credit and
+                                    Debit Card Facility.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Doctor on
+                                    Call.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Pickup and
+                                    Drop.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Site Seeing
+                                    and Boating.</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Foreign
+                                    Exchange Service.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="tilt-wrapper">
+                        <div
+                            class="glass-card tilt-card p-10 rounded-[2rem] h-full border-t-2 border-t-gold/50 bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 shadow-sm">
+                            <div class="glare rounded-[2rem]"></div>
+                            <h3
+                                class="text-2xl font-serif text-gold mb-8 border-b border-gray-300 dark:border-white/10 pb-4">
+                                Complimentary Basis</h3>
+                            <ul class="space-y-3.5 text-sm text-gray-700 dark:text-gray-300 font-light">
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Breakfast
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Daily choice
+                                    of news paper</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Bottled
+                                    Mineral Water – 500ml per person</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Wi Fi – in
+                                    room & Public areas</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Multi Channel
+                                    Television</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Telephone
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Safe Deposit
+                                    Locker</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Coffee maker
+                                    with supplies</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> 24 hours
+                                    running hot & cold water</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Soap</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Shampoo</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Moisturizer
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Comb</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Shower cap
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Shoe shine
+                                    strip</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Note pad &
+                                    pencil</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="tilt-wrapper">
+                        <div
+                            class="glass-card tilt-card p-10 rounded-[2rem] h-full border-t-2 border-t-gold/50 bg-white/40 dark:bg-[rgba(30,30,30,0.6)] border border-gray-200 dark:border-white/5 shadow-sm">
+                            <div class="glare rounded-[2rem]"></div>
+                            <h3
+                                class="text-2xl font-serif text-gold mb-8 border-b border-gray-300 dark:border-white/10 pb-4">
+                                On Request Complimentary Basis</h3>
+                            <ul class="space-y-3.5 text-sm text-gray-700 dark:text-gray-300 font-light">
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Dental kit
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Shaving kit
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Hair dryer
+                                </li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Iron box &
+                                    Iron board</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> All purpose
+                                    kit</li>
+                                <li class="flex items-start gap-3"><span class="text-gold mt-0.5">✔</span> Bathroom
+                                    slippers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer id="contact"
+            class="pt-24 pb-12 px-6 glass-card rounded-t-[3rem] mt-24 border-b-0 border border-gray-200 dark:border-white/5 shadow-[-0_-20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_-20px_50px_rgba(0,0,0,0.5)] bg-white/60 dark:bg-[rgba(20,20,20,0.8)]">
+            <div class="max-w-[90rem] mx-auto">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-16">
+                    <div>
+                        <h4 class="text-gold font-serif text-2xl mb-6">About Us</h4>
+                        <p
+                            class="text-gray-600 dark:text-gray-400 text-sm font-light leading-relaxed mb-6 text-justify">
+                            A trip to Alleppey the 'Venice of the East' is a mesmerizingly beautiful and relaxing
+                            experience. Alleppey's allure is the backwaters, a cruise on the Punnamada Kayal takes you
+                            around greenery fringed villages and scenic islands with coconut and paddy fields. Hotel
+                            Royale Park was established to contribute to the overall tourism experience by providing
+                            comfortable stay and tastier food experien... <a href="#"
+                                class="text-gold font-medium hover:underline">More</a>
+                        </p>
+                    </div>
+                    <div>
+                        <h4 class="text-gold font-serif text-2xl mb-6">Video Gallery</h4>
+                        <div
+                            class="rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 relative shadow-lg bg-black group aspect-video">
+                            <img src="https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1463317238_p46ann.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div
+                                    class="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-md shadow-black/40">
+                                    <svg class="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-gold font-serif text-2xl mb-6">Our Address</h4>
+                        <div class="space-y-3.5 text-sm text-gray-600 dark:text-gray-400 font-light mb-8">
+                            <p class="mb-4 text-gray-800 dark:text-gray-300 font-medium">YMCA Road, Alappuzha</p>
+                            <div class="flex"><span
+                                    class="w-16 font-semibold text-gray-800 dark:text-gray-300">Mob:</span> <span>+91
+                                    7034 666 300</span></div>
+                            <div class="flex"><span
+                                    class="w-16 font-semibold text-gray-800 dark:text-gray-300">Lan:</span> <span>0477
+                                    2238728, 2237828, 2238928, 2264828</span></div>
+                            <div class="flex"><span
+                                    class="w-16 font-semibold text-gray-800 dark:text-gray-300">Email:</span> <a
+                                    href="mailto:mail@hotelroyalepark.com"
+                                    class="hover:text-gold transition-colors">mail@hotelroyalepark.com</a></div>
+                            <div class="flex"><span
+                                    class="w-16 font-semibold text-gray-800 dark:text-gray-300">Web:</span> <a
+                                    href="http://www.hotelroyalepark.com" target="_blank"
+                                    class="hover:text-gold transition-colors">www.hotelroyalepark.com</a></div>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <a href="#"
+                                class="w-9 h-9 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gold hover:text-black transition-all duration-300">Fi</a>
+                            <a href="#"
+                                class="w-9 h-9 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gold hover:text-black transition-all duration-300">Tw</a>
+                            <a href="#"
+                                class="w-9 h-9 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gold hover:text-black transition-all duration-300">In</a>
+                            <a href="#"
+                                class="w-9 h-9 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gold hover:text-black transition-all duration-300">Yt</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="border-t border-gray-300 dark:border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+                    <p>&copy; 2026 - All Rights Reserved By Hotel Royale Park</p>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Interactive Booking Modal -->
+        <div id="booking-modal"
+            class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-500 flex items-center justify-center p-4">
+            <div class="glass-card w-full max-w-2xl rounded-[2rem] p-8 md:p-12 border border-white/20 dark:border-white/10 relative transform scale-95 transition-transform duration-500 bg-white/80 dark:bg-[rgba(15,15,15,0.9)] shadow-2xl"
+                id="booking-modal-content">
+                <button
+                    class="absolute top-6 right-6 text-gray-500 dark:text-gray-400 hover:text-gold transition-colors text-3xl font-light"
+                    onclick="closeBookingModal()">&times;</button>
+
+                <div class="text-center mb-8">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Reserve Your <span
+                            class="text-gold font-serif italic">Stay</span></h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Complete your details below to confirm
+                        availability.</p>
+                </div>
+
+                <form class="space-y-6"
+                    onsubmit="event.preventDefault(); alert('Booking Request Submitted Successfully!'); closeBookingModal();">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div
+                            class="bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/10 rounded-xl p-4">
+                            <label
+                                class="block text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest">Check-in
+                                Date</label>
+                            <input type="date"
+                                class="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white font-medium focus:ring-0">
+                        </div>
+                        <div
+                            class="bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/10 rounded-xl p-4">
+                            <label
+                                class="block text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest">Check-out
+                                Date</label>
+                            <input type="date"
+                                class="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white font-medium focus:ring-0">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div
+                            class="bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/10 rounded-xl p-4">
+                            <label
+                                class="block text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest">Room
+                                Type</label>
+                            <select id="modal-room-select"
+                                class="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white font-medium focus:ring-0 [&>option]:bg-white dark:[&>option]:bg-obsidian">
+                                <option value="Royale Suite">Royale Suite</option>
+                                <option value="Luxury Room">Luxury Room</option>
+                                <option value="Premium Room">Premium Room</option>
+                            </select>
+                        </div>
+                        <div
+                            class="bg-white/50 dark:bg-obsidian/50 border border-gray-200 dark:border-white/10 rounded-xl p-4">
+                            <label
+                                class="block text-[10px] font-bold text-gray-500 dark:text-gold/60 mb-2 uppercase tracking-widest">Guests</label>
+                            <select
+                                class="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white font-medium focus:ring-0 [&>option]:bg-white dark:[&>option]:bg-obsidian">
+                                <option>1 Adult</option>
+                                <option selected>2 Adults</option>
+                                <option>2 Adults, 1 Child</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full py-5 mt-4 rounded-xl gold-btn-3d font-extrabold text-obsidian tracking-wider text-sm uppercase relative z-20">
+                        Confirm Reservation
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- NEW Amenity Details Modal -->
+        <div id="amenity-modal"
+            class="fixed inset-0 z-[160] bg-black/80 backdrop-blur-xl opacity-0 pointer-events-none transition-opacity duration-500 flex items-center justify-center p-4">
+            <div class="glass-card w-full max-w-5xl rounded-[2rem] overflow-hidden border border-white/20 dark:border-white/10 relative transform scale-95 transition-transform duration-500 bg-white/90 dark:bg-[rgba(15,15,15,0.95)] shadow-2xl flex flex-col md:flex-row"
+                id="amenity-modal-content">
+                <button
+                    class="absolute top-4 right-4 z-50 w-10 h-10 bg-black/20 hover:bg-black/50 rounded-full text-gray-800 dark:text-white hover:text-gold transition-colors text-2xl font-light flex items-center justify-center backdrop-blur-md"
+                    onclick="closeAmenityModal()">&times;</button>
+
+                <div class="md:w-1/2 h-64 md:h-auto relative">
+                    <img id="amenity-modal-img" src="" alt="Amenity Details" class="w-full h-full object-cover">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-transparent to-white/90 dark:to-[rgba(15,15,15,0.95)] hidden md:block">
+                    </div>
+                    <div
+                        class="absolute inset-0 bg-gradient-to-t from-white/90 dark:from-[rgba(15,15,15,0.95)] to-transparent block md:hidden">
+                    </div>
+                </div>
+
+                <div class="md:w-1/2 p-8 md:p-14 flex flex-col justify-center relative z-10">
+                    <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-gold mb-3"
+                        id="amenity-modal-subtitle">Premium Facility</div>
+                    <h3 class="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 font-serif italic tracking-tight"
+                        id="amenity-modal-title">Amenity Name</h3>
+                    <p class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-light leading-relaxed mb-8"
+                        id="amenity-modal-desc">Description goes here.</p>
+
+                    <ul class="space-y-3 mb-10 text-xs md:text-sm text-gray-700 dark:text-gray-300 font-medium"
+                        id="amenity-modal-features">
+                        <!-- Filled by JS -->
+                    </ul>
+
+                    <div class="flex gap-4">
+                        <button
+                            class="flex-1 py-4 px-6 rounded-xl gold-btn-3d font-extrabold text-obsidian tracking-wider text-[10px] uppercase"
+                            onclick="closeAmenityModal()">Close</button>
+                        <a href="#contact"
+                            class="flex-1 py-4 px-6 rounded-xl border border-gray-300 dark:border-white/20 text-gray-900 dark:text-white hover:border-gold hover:text-gold transition-colors font-extrabold tracking-wider text-[10px] uppercase text-center flex items-center justify-center"
+                            onclick="closeAmenityModal()">Contact Us</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="lightbox-modal"
+        class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-2xl opacity-0 pointer-events-none transition-opacity duration-500 flex items-center justify-center p-4"
+        onclick="closeLightbox()">
+        <button class="absolute top-6 right-6 text-white/70 hover:text-white text-3xl font-light transition-colors"
+            onclick="closeLightbox()">&times;</button>
+        <div class="max-w-5xl max-h-[85vh] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-charcoal"
+            onclick="event.stopPropagation()">
+            <img id="lightbox-img" src="" alt="Popup Preview" class="w-full h-auto max-h-[85vh] object-contain">
+        </div>
+    </div>
+
+    <script>
+        function openLightbox(element) {
+            const imgSrc = element.querySelector('img').src;
+            const lightbox = document.getElementById('lightbox-modal');
+            const lightboxImg = document.getElementById('lightbox-img');
+            lightboxImg.src = imgSrc;
+            lightbox.classList.add('lightbox-active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox-modal').classList.remove('lightbox-active');
+        }
+
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            const isDark = htmlElement.classList.contains('dark');
+            ambientLight.intensity = isDark ? 0.5 : 1.2;
+            keyLight.intensity = isDark ? 4 : 2;
+        });
+
+        const navLinks = document.querySelectorAll('.nav-link-premium');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.forEach(item => item.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        const canvas = document.getElementById('webgl-canvas');
+        const scene = new THREE.Scene();
+
+        const sizes = { width: window.innerWidth, height: window.innerHeight };
+        const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100);
+        camera.position.set(0, 0, 8);
+        scene.add(camera);
+
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.physicallyCorrectLights = true;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        const geometry = new THREE.TorusKnotGeometry(1.5, 0.4, 200, 32);
+        const material = new THREE.MeshPhysicalMaterial({
+            color: 0x222222,
+            metalness: 1.0,
+            roughness: 0.2,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            reflectivity: 1.0
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xd4af37, 4);
+        keyLight.position.set(5, 5, 4);
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0xfff5e6, 2);
+        rimLight.position.set(-5, 5, -4);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.PointLight(0x997A00, 2, 10);
+        fillLight.position.set(0, -3, 2);
+        scene.add(fillLight);
+
+        let scrollY = window.scrollY;
+        let currentScrollY = scrollY;
+        let mouseX = 0; let mouseY = 0;
+        let targetMouseX = 0; let targetMouseY = 0;
+
+        window.addEventListener('scroll', () => { scrollY = window.scrollY; });
+        window.addEventListener('mousemove', (event) => {
+            targetMouseX = (event.clientX / sizes.width) * 2 - 1;
+            targetMouseY = -(event.clientY / sizes.height) * 2 + 1;
+        });
+        window.addEventListener('resize', () => {
+            sizes.width = window.innerWidth;
+            sizes.height = window.innerHeight;
+            camera.aspect = sizes.width / sizes.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(sizes.width, sizes.height);
+        });
+
+        const clock = new THREE.Clock();
+        const tick = () => {
+            const elapsedTime = clock.getElapsedTime();
+            currentScrollY += (scrollY - currentScrollY) * 0.05;
+            mouseX += (targetMouseX - mouseX) * 0.05;
+            mouseY += (targetMouseY - mouseY) * 0.05;
+
+            mesh.rotation.y = elapsedTime * 0.2 + (currentScrollY * 0.002);
+            mesh.rotation.x = currentScrollY * 0.001;
+            mesh.rotation.z = currentScrollY * 0.0005;
+
+            const scrollProgress = currentScrollY / (document.body.clientHeight - window.innerHeight || 1);
+            const targetX = Math.sin(scrollProgress * Math.PI * 2) * 2.5;
+            mesh.position.x += (targetX - mesh.position.x) * 0.05;
+
+            const scale = 1 + scrollProgress * 0.5;
+            mesh.scale.set(scale, scale, scale);
+
+            camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.05;
+            camera.position.y += (mouseY * 0.5 - camera.position.y) * 0.05;
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+        tick();
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { root: null, rootMargin: '0px', threshold: 0.1 });
+
+        document.querySelectorAll('.reveal-3d').forEach((el) => observer.observe(el));
+
+        const cards = document.querySelectorAll('.tilt-card');
+        cards.forEach(card => {
+            const glare = card.querySelector('.glare');
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const rotateX = ((y - (rect.height / 2)) / (rect.height / 2)) * -8;
+                const rotateY = ((x - (rect.width / 2)) / (rect.width / 2)) * 8;
+
+                card.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
+
+                if (glare) {
+                    const glareX = (x / rect.width) * 100;
+                    const glareY = (y / rect.height) * 100;
+                    glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(212,175,55,0.2), transparent 50%)`;
+                    glare.style.opacity = '1';
+                }
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                if (glare) glare.style.opacity = '0';
+            });
+        });
+
+        // STAGGERED LOAD SEQUENCE
+        window.addEventListener('load', () => {
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+                setTimeout(() => { preloader.classList.add('slide-up'); }, 200);
+            }
+            const loadElements = document.querySelectorAll('.load-hidden');
+            loadElements.forEach((el, index) => {
+                setTimeout(() => { el.classList.add('load-visible'); }, 600 + (index * 150));
+            });
+        });
+
+        // BOOKING MODAL LOGIC
+        const bookingModal = document.getElementById('booking-modal');
+        const bookingModalContent = document.getElementById('booking-modal-content');
+        const roomSelect = document.getElementById('modal-room-select');
+
+        document.querySelectorAll('.book-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const roomName = btn.getAttribute('data-room');
+                if (roomName && roomSelect) { roomSelect.value = roomName; }
+
+                bookingModal.classList.add('opacity-100', 'pointer-events-auto');
+                bookingModal.classList.remove('opacity-0', 'pointer-events-none');
+                bookingModalContent.classList.remove('scale-95');
+                bookingModalContent.classList.add('scale-100');
+            });
+        });
+
+        window.closeBookingModal = function () {
+            bookingModal.classList.remove('opacity-100', 'pointer-events-auto');
+            bookingModal.classList.add('opacity-0', 'pointer-events-none');
+            bookingModalContent.classList.remove('scale-100');
+            bookingModalContent.classList.add('scale-95');
+        };
+
+        bookingModal.addEventListener('click', (e) => {
+            if (e.target === bookingModal) { closeBookingModal(); }
+        });
+
+        // --- AMENITIES SHOWCASE LOGIC ---
+        const amenityData = {
+            'conference': {
+                title: 'Conference Hall',
+                subtitle: 'Corporate Excellence',
+                img: 'https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781740_ezxsve.jpg',
+                desc: 'Our state-of-the-art Conference Hall is fully equipped with modern audio-visual technology, high-speed Wi-Fi, and comfortable seating arrangements. Perfect for corporate meetings, seminars, and grand presentations.',
+                features: ['✔ 100+ Seating Capacity', '✔ Advanced Audio & Visuals', '✔ High-speed Wi-Fi Access', '✔ Professional Event Assistance']
+            },
+            'restaurant': {
+                title: 'Multi-Cuisine Restaurant',
+                subtitle: 'Culinary Delights',
+                img: 'https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450781727_xij4cn.jpg',
+                desc: 'Indulge in a world of flavors at our Multi-Cuisine Restaurant. Our expert chefs craft exquisite dishes ranging from authentic Kerala delicacies to international favorites in a highly sophisticated dining environment.',
+                features: ['✔ Authentic Kerala Cuisine', '✔ Vegetarian & Non-Veg Options', '✔ Elegant Dining Ambiance', '✔ Breakfast, Lunch & Dinner Service']
+            },
+            'rooms': {
+                title: 'Luxury Rooms',
+                subtitle: 'Ultimate Comfort',
+                img: 'https://res.cloudinary.com/dxmuistk4/image/upload/v1780471147/1450702077_j4kr1p.jpg',
+                desc: 'Experience unparalleled comfort in our meticulously designed luxury rooms. Featuring premium bedding, modern amenities, climate control, and elegant interiors, each room is a sanctuary of ultimate relaxation.',
+                features: ['✔ 24/7 Room Service', '✔ Premium Bedding & Linens', '✔ In-room Safe & Locker', '✔ Complimentary Wi-Fi & TV']
+            }
+        };
+
+        const amenityModal = document.getElementById('amenity-modal');
+        const amenityModalContent = document.getElementById('amenity-modal-content');
+
+        window.openAmenityModal = function (type) {
+            const data = amenityData[type];
+            if (!data) return;
+
+            document.getElementById('amenity-modal-title').textContent = data.title;
+            document.getElementById('amenity-modal-subtitle').textContent = data.subtitle;
+            document.getElementById('amenity-modal-desc').textContent = data.desc;
+            document.getElementById('amenity-modal-img').src = data.img;
+
+            const featuresList = document.getElementById('amenity-modal-features');
+            featuresList.innerHTML = '';
+            data.features.forEach(feature => {
+                const li = document.createElement('li');
+                li.className = "flex items-center gap-3";
+                li.innerHTML = `<span class="text-gold">${feature.split(' ')[0]}</span> ${feature.substring(2)}`;
+                featuresList.appendChild(li);
+            });
+
+            amenityModal.classList.add('opacity-100', 'pointer-events-auto');
+            amenityModal.classList.remove('opacity-0', 'pointer-events-none');
+            amenityModalContent.classList.remove('scale-95');
+            amenityModalContent.classList.add('scale-100');
+        };
+
+        window.closeAmenityModal = function () {
+            amenityModal.classList.remove('opacity-100', 'pointer-events-auto');
+            amenityModal.classList.add('opacity-0', 'pointer-events-none');
+            amenityModalContent.classList.remove('scale-100');
+            amenityModalContent.classList.add('scale-95');
+        };
+
+        amenityModal.addEventListener('click', (e) => {
+            if (e.target === amenityModal) { closeAmenityModal(); }
+        });
+
+    </script>
+</body>
+
+</html>
